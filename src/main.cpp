@@ -3,7 +3,8 @@
 int main() {
     WebServer server(1316,
                      3,
-                     60000,
+                     TimerType::Loop,
+                     10000,
                      false,
                      3306,
                      "root",
@@ -11,8 +12,8 @@ int main() {
                      "webserver",
                      12,
                      6,
-                     true,
-                     1,
+                     false,
+                     0,
                      1024);
     server.Start();
 }

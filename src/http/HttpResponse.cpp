@@ -12,7 +12,7 @@ const unordered_map<string, string> HttpResponse::MIME_TYPE = {
         { ".txt",   "text/plain" },
         { ".rtf",   "application/rtf" },
         { ".pdf",   "application/pdf" },
-        { ".word",  "application/nsword" },
+        { ".word",  "application/msword" },
         { ".png",   "image/png" },
         { ".gif",   "image/gif" },
         { ".jpg",   "image/jpeg" },

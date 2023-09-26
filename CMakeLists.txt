@@ -24,6 +24,9 @@ add_executable(web_server src/main.cpp
         src/server/Epoller.h
         src/server/WebServer.cpp
         src/server/WebServer.h
+        src/timer/LoopTimer.cpp
+        src/timer/LoopTimer.h
+        src/timer/Timer.h
 )
 target_link_libraries(web_server mysqlclient)
 target_link_libraries(web_server pthread)

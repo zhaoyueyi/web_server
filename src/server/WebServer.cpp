@@ -4,11 +4,11 @@
 
 #include "WebServer.h"
 
-WebServer::WebServer(int port, int trigger_mode, int timeout_ms, bool opt_linger, int sql_port,
+WebServer::WebServer(int port, int trigger_mode, TimerType timer_type, int timeout_ms, bool opt_linger, int sql_port,
                      const char *sql_username, const char *sql_password, const char *db_name, int conn_pool_num,
                      int thread_num, bool open_log, int log_level, int log_queue_size):
                      port_(port), open_linger_(opt_linger), timeout_ms_(timeout_ms), is_closed_(false),
-                     timer_(new HeapTimer()), thread_pool_(new ThreadPool(thread_num)),
+                     thread_pool_(new ThreadPool(thread_num)),
                      epoller_(new Epoller()){
     src_dir_ = getcwd(nullptr, 256);  // 当前工作目录
     assert(src_dir_);
@@ -30,6 +30,16 @@ WebServer::WebServer(int port, int trigger_mode, int timeout_ms, bool opt_linger
                                   sql_password,
                                   db_name,
                                   conn_pool_num);
+    // 初始化Timer
+    switch (timer_type) {
+        case TimerType::Heap:
+            timer_ = make_unique<HeapTimer>();
+            break;
+        case TimerType::Loop:
+        default:
+            timer_ = make_unique<LoopTimer>();
+            break;
+    }
     // 初始化事件 socket
     InitEventMode_(trigger_mode);
     if(!InitSocket_()){
@@ -64,7 +74,7 @@ void WebServer::Start() {
     }
     while(!is_closed_){
         if(timeout_ms_ > 0){
-            timeout = timer_->GetNextTick();
+            timeout = timer_->GetNextTick();  // 最近剩余过期时间
         }
         int event_cnt = epoller_->Wait(timeout);  // 当前就绪队列中事件数
         for(int i=0; i<event_cnt; ++i){
@@ -107,7 +117,8 @@ bool WebServer::InitSocket_() {
             opt_linger.l_onoff = 1;
             opt_linger.l_linger = 1;
         }
-        listen_fd_ = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+//        listen_fd_ = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
         if(listen_fd_ < 0){
             LOG_ERROR("Create socket error!");
             return false;
@@ -149,7 +160,7 @@ bool WebServer::InitSocket_() {
         close(listen_fd_);
         return false;
     }
-//    SetFdNonblock_(listen_fd_);
+    SetFdNonblock_(listen_fd_);
     LOG_INFO("Server port:%d", port_);
     return true;
 }
@@ -189,7 +200,7 @@ void WebServer::AddClient_(int fd, sockaddr_in addr) {
                     [this, conn = &users_[fd]] { CloseConn_(conn); });  // 绑定超时断连回调
     }
     epoller_->AddFd(fd, EPOLLIN | conn_event_);  // 监听客户端fd的写入事件
-//    SetFdNonblock_(fd);
+    SetFdNonblock_(fd);//todo
     LOG_INFO("Client[%d] in!", users_[fd].GetFd());
 }
 
@@ -198,8 +209,8 @@ void WebServer::DealListen_() {
     struct sockaddr_in addr{};
     socklen_t len = sizeof(addr);
     do{
-//        int fd = accept(listen_fd_, (struct sockaddr*)&addr, &len);
-        int fd = accept4(listen_fd_, (struct sockaddr*)&addr, &len, SOCK_NONBLOCK);
+        int fd = accept(listen_fd_, (struct sockaddr*)&addr, &len);//todo
+//        int fd = accept4(listen_fd_, (struct sockaddr*)&addr, &len, SOCK_NONBLOCK);
         if(fd <= 0){
             return;
         }else if(HttpConn::user_count >= MAX_FD){
@@ -296,7 +307,15 @@ void WebServer::OnProcess(HttpConn *client) {
 /// fd设置非阻塞
 /// \param fd
 /// \return
+//int WebServer::SetFdNonblock_(int fd) {
+//    assert(fd > 0);
+//    return fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+//}
 int WebServer::SetFdNonblock_(int fd) {
-    assert(fd > 0);
-    return fcntl(fd, F_SETFL, fcntl(fd, F_GETFD, 0) | O_NONBLOCK);
+    int flag = fcntl(fd, F_GETFL, 0);
+    if (flag == -1) return -1;
+
+    flag |= O_NONBLOCK;
+    if (fcntl(fd, F_SETFL, flag) == -1) return -1;
+    return 0;
 }

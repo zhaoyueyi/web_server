@@ -7,7 +7,9 @@
 
 #include <netinet/in.h>
 #include "../http/HttpConn.h"
+#include "../timer/Timer.h"
 #include "../timer/HeapTimer.h"
+#include "../timer/LoopTimer.h"
 #include "../pool/ThreadPool.h"
 #include "Epoller.h"
 
@@ -36,6 +38,7 @@ class WebServer {
 public:
     WebServer(int port,
               int trigger_mode,
+              TimerType timer_type,
               int timeout_ms,
               bool opt_linger,
               int sql_port,
@@ -79,7 +82,7 @@ private:
     uint32_t listen_event_;
     uint32_t conn_event_;  // 是否ET标记位
 
-    std::unique_ptr<HeapTimer> timer_;
+    std::unique_ptr<Timer> timer_;
     std::unique_ptr<ThreadPool> thread_pool_;
     std::unique_ptr<Epoller> epoller_;
     std::unordered_map<int, HttpConn> users_;

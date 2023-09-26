@@ -9,6 +9,8 @@
 #include <chrono>
 #include <cassert>
 #include <algorithm>
+#include <queue>
+#include "Timer.h"
 
 typedef std::function<void()> TimeoutCallback;
 typedef std::chrono::high_resolution_clock Clock;
@@ -30,18 +32,21 @@ struct TimerNode{
 /*
  * 小根堆定时器
  */
-class HeapTimer {
+class HeapTimer: public Timer {
 public:
-    HeapTimer(){heap_.reserve(64);}
+    HeapTimer(){
+        heap_.reserve(64);
+        std::make_heap(heap_.begin(), heap_.end(), std::greater<>());
+    }
     ~HeapTimer(){Clear();}
 
-    void Adjust(int id, int new_expire);
-    void Add(int id, int time_out, const TimeoutCallback& callback);
-    void DoWork(int id);
-    void Tick();
+    void Adjust(int id, int new_expire) override;
+    void Add(int id, int time_out, const TimeoutCallback& callback) override;
+//    void DoWork(int id);
+    void Tick() override;
     void Clear();
     void Pop();
-    int GetNextTick();
+    int GetNextTick() override;
 private:
     void Del_(size_t i);
     void ShiftUp_(size_t i);

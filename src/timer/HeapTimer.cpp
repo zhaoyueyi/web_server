@@ -30,15 +30,15 @@ void HeapTimer::Add(int id, int time_out, const TimeoutCallback &callback) {
     }
 }
 
-void HeapTimer::DoWork(int id) {
-    if(heap_.empty() || ref_.count(id) == 0){
-        return;
-    }
-    size_t i = ref_[id];
-    auto node = heap_[i];
-    node.callback();
-    Del_(i);
-}
+//void HeapTimer::DoWork(int id) {
+//    if(heap_.empty() || ref_.count(id) == 0){
+//        return;
+//    }
+//    size_t i = ref_[id];
+//    auto node = heap_[i];
+//    node.callback();
+//    Del_(i);
+//}
 
 void HeapTimer::Tick() {
     while(!heap_.empty()){
